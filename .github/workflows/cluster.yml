@@ -1,0 +1,59 @@
+apiVersion: mysql.presslabs.org/v1alpha1
+kind: MysqlCluster
+metadata:
+  name: mycluster               #实例名称
+  labels:
+    app: mysqlha                #固定写mysqlha
+    release: mycluster          #与实例名称一致
+spec:
+  replicas: 2                   #从库数量（单机版为0）
+  secretName: mycluster-secret  #实例名称拼接 -secret
+
+  mysqlVersion: "5.7"
+  image: "172.16.5.67/mysql/mysql:5.7"
+  imagePullPolicy: IfNotPresent
+
+  mysqlConf:
+    innodb-buffer-pool-size: 2048M      #对应内存规格
+    max-connections: 3000               #对应参数max-connections
+    long-query-time: "0.3"              #对应参数long-query-time（字符型）
+    max-connect-errors: 1000000
+    sync-binlog: 1
+    slow-query-log: 1
+    slow-query-log-file: /var/lib/mysql/slow.log
+    innodb-log-file-size: 1G
+    slave-parallel-type: LOGICAL_CLOCK
+    sql-mode: "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+    plugin-load: "rpl_semi_sync_slave=semisync_slave.so"
+    plugin-load-add: "rpl_semi_sync_master=semisync_master.so"
+    rpl_semi_sync_master_enabled: 1
+    rpl_semi_sync_slave_enabled: 1
+    lock-wait-timeout: 3600
+    thread-stack: 512K
+    sort-buffer-size: 4M
+    join-buffer-size: 4M
+    read-buffer-size: 8M
+    read-rnd-buffer-size: 4M
+    bulk-insert-buffer-size: 64M
+    thread-cache-size: 768
+    binlog-cache-size: 4M
+    max-binlog-size: 1G
+    innodb-max-undo-log-size: 4G
+
+  podSpec:
+    resources:
+      requests:
+        cpu: 2000m              #对应cpu规格
+        memory: 6Gi             #为内存规格的两倍
+      limits:
+        cpu: 2000m              #与cpu requests一致
+        memory: 6Gi             #为内存规格的两倍
+
+  volumeSpec:
+    persistentVolumeClaim:
+      storageClassName: hostpath           #存储配置storage Class名称
+      accessModes: [ "ReadWriteMany" ]
+      resources:
+        requests:
+          storage: 10Gi                    #存储大小，最低不可小于10G
+
